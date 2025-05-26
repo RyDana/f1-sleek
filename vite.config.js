@@ -6,4 +6,5 @@ export default defineConfig({
       '2001-184-95-255-242.ngrok-free.app',
     ],
   },
+  base: '/f1-sleek/'
 });
