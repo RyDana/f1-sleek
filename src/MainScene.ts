@@ -11,7 +11,7 @@ import {
   GradientBladeParams,
 } from 'tweakpane-plugin-gradient';
 
-const gradient = [
+let gradient = [
   // minimum 2 points
   { time: 0, value: { r: 0, g: 0, b: 0, a: 1 } },
   { time: 0.65, value: { r: 139, g: 143, b: 171, a: 1.0 } },
@@ -51,8 +51,11 @@ const defaultSettings = {
   uGradCompFrequency: new THREE.Vector3(2.0, 1.0, 0.4),
   uGradCompMin: new THREE.Vector3(0.0, 0.0, 0.0),
   uGradCompAmplitude: new THREE.Vector3(1.0, 1.0, 1.0),
+  uGradCompApply: { x: true, y: true, z: true },
   uSpeed: 0.3,
   uGradientTexture: gradient,
+  uVignetteInner: 0.3,
+  uVignetteDarkness: 0.999,
 };
 
 export type MatUniforms = typeof defaultSettings;
@@ -64,6 +67,9 @@ const parameters = autoSaveToLocalStorage('parameters', {
   ...defaultSettings,
   ...JSON.parse(localStorage.getItem('parameters') ?? '{}'),
 });
+
+gradient = parameters.uGradientTexture;
+gradientParams.initialPoints = gradient;
 
 export default class MainScene {
   private camera: THREE.Camera;
@@ -94,6 +100,40 @@ export default class MainScene {
       localStorage.removeItem('parameters');
       window.location = window.location;
       Object.assign(parameters, defaultSettings);
+    });
+
+    this.pane.addButton({ title: 'Export settings' }).on('click', () => {
+      const exportedSettings = JSON.stringify(parameters, null, 2);
+      const blob = new Blob([exportedSettings], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'settings.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    this.pane.addButton({ title: 'Import settings' }).on('click', async () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const text = await file.text();
+          try {
+            const importedSettings = JSON.parse(text);
+            Object.assign(parameters, importedSettings);
+            localStorage.setItem('parameters', JSON.stringify(parameters));
+            window.location = window.location;
+            this.pane.refresh();
+          } catch (error) {
+            console.error('Failed to import settings:', error);
+            alert('Invalid settings file.');
+          }
+        }
+      };
+      input.click();
     });
 
     //MESH
@@ -288,6 +328,7 @@ export default class MainScene {
       );
       this.mesh.material.needsUpdate = true;
     });
+    // api.importState();
 
     const waveLevels = ['x', 'y', 'z'] as const;
 
@@ -298,6 +339,17 @@ export default class MainScene {
     for (let i = 0; i < waveLevels.length; i++) {
       const level = waveLevels[i];
       const page = waveTab.pages[i];
+      page
+        .addBinding(parameters.uGradCompApply, level, {
+          label: `Apply`,
+          view: 'checkbox',
+        })
+        .on(
+          'change',
+          (event) =>
+            (materialUniforms.uGradCompApply.value[level] = event.value)
+        );
+
       page
         .addBinding(parameters.uGradCompFrequency, level, {
           label: `Frequency`,
@@ -328,6 +380,33 @@ export default class MainScene {
             (materialUniforms.uGradCompAmplitude.value[level] = event.value)
         );
     }
+
+    const vignetteFolder = this.pane.addFolder({
+      title: 'Vignette',
+      expanded: true,
+    });
+
+    vignetteFolder
+      .addBinding(parameters, 'uVignetteInner', {
+        label: 'Vignette inner',
+        min: 0.0,
+        max: 1.0,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uVignetteInner.value = event.value)
+      );
+    vignetteFolder
+      .addBinding(parameters, 'uVignetteDarkness', {
+        label: 'Vignette darkness',
+        min: 0.0,
+        max: 3.0,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uVignetteDarkness.value = event.value)
+      );
+
     // lineFolder
     //   .addBinding(parameters.lineCount, 'y', {
     //     label: 'lineCount.y',

@@ -52,9 +52,14 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
         uniform vec3 uGradCompFrequency;
         uniform vec3 uGradCompMin;
         uniform vec3 uGradCompAmplitude;
+        uniform vec3 uGradCompApply;
         uniform float uMarkerVisibility;
         uniform float uSpeed;
         uniform sampler2D uGradientTexture;
+
+        // Vignette
+        uniform float uVignetteInner;
+        uniform float uVignetteDarkness;
 
         out vec4 fragColor;
         
@@ -144,22 +149,17 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
             }
             // oscillate color components by distance factor. smoothstep for contrast boost
             vec3 col = vec3(
-                abs(sin(time + dist * uGradCompFrequency.r)*uGradCompAmplitude.r + uGradCompMin.r),
-                abs(cos(time + dist * uGradCompFrequency.g)*uGradCompAmplitude.g + uGradCompMin.g),
-                abs(sin(time + dist * uGradCompFrequency.b)*uGradCompAmplitude.b + uGradCompMin.b)
+                abs(sin(time + dist * uGradCompFrequency.r)*uGradCompAmplitude.r + uGradCompMin.r) * uGradCompApply.r + (1.0 - uGradCompApply.r),
+                abs(cos(time + dist * uGradCompFrequency.g)*uGradCompAmplitude.g + uGradCompMin.g) * uGradCompApply.g + (1.0 - uGradCompApply.g),
+                abs(sin(time + dist * uGradCompFrequency.b)*uGradCompAmplitude.b + uGradCompMin.b) * uGradCompApply.b + (1.0 - uGradCompApply.b)
             );
 
-
-            
-            // float col1 = (col.r+ col.g+ col.b)/3.0;
             float col1 = col.r * col.g * col.b;
+            col1 -= smoothstep(0., 0.7, max(0., length(uv) - uVignetteInner) * uVignetteDarkness);
+
             vec3 gradientColor = texture(uGradientTexture, vec2(col1, 0.5)).rgb;
             col = gradientColor; //vec3(col1 - 0.01, col1, col1 + 0.08);
             col = mix(col, vec3(1.0, 0.0, 0.0), controlPointMarker * uMarkerVisibility);
-            // vignette outside of center
-            // float vignetteInner = 0.3;
-            // float vignetteDarkness = 0.999;
-            // col -= smoothstep(0., 0.7, max(0., length(uv) - vignetteInner) * vignetteDarkness);
 
             fragColor = vec4(col, 1.0);
 
@@ -190,10 +190,13 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
         },
         uGradCompMin: { value: parameters.uGradCompMin },
         uGradCompAmplitude: { value: parameters.uGradCompAmplitude },
+        uGradCompApply: { value: parameters.uGradCompApply },
         uSpeed: { value: parameters.uSpeed },
         uGradientTexture: {
           value: createGradientTexture(parameters.uGradientTexture),
-        }, // Add gradient texture uniform
+        },
+        uVignetteInner: { value: parameters.uVignetteInner },
+        uVignetteDarkness: { value: parameters.uVignetteDarkness },
       },
     });
   }
