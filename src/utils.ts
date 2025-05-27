@@ -1,4 +1,10 @@
-export function autoSaveToLocalStorage<T extends object>(key: string, rootObject: T) {
+import * as THREE from 'three';
+import { GradientPoint } from 'tweakpane-plugin-gradient';
+
+export function autoSaveToLocalStorage<T extends object>(
+  key: string,
+  rootObject: T
+) {
   const save = () => {
     localStorage.setItem(key, JSON.stringify(rootObject));
   };
@@ -37,4 +43,47 @@ export function autoSaveToLocalStorage<T extends object>(key: string, rootObject
   }
 
   return createProxy(rootObject, save);
+}
+
+export function createGradientTexture(
+  gradientStops: Array<{
+    time: number;
+    value: {
+      r: number;
+      g: number;
+      b: number;
+      a: number;
+    };
+  }>,
+  resolution: number = 256
+): THREE.DataTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = resolution;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d')!;
+
+  // Create gradient
+  const gradient = ctx.createLinearGradient(0, 0, resolution, 0);
+  gradientStops.forEach((stop) => {
+    gradient.addColorStop(
+      stop.time,
+      `rgba(${stop.value.r}, ${stop.value.g}, ${stop.value.b}, ${stop.value.a})`
+    );
+  });
+
+  // Draw gradient to canvas
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, resolution, 1);
+
+  // Extract pixel data
+  const imageData = ctx.getImageData(0, 0, resolution, 1).data;
+  const texture = new THREE.DataTexture(
+    new Uint8Array(imageData),
+    resolution,
+    1,
+    THREE.RGBAFormat
+  );
+  texture.needsUpdate = true;
+
+  return texture;
 }

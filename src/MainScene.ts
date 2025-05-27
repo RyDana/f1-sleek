@@ -1,21 +1,58 @@
 // import { ContentApplication, UserID, Blob, sonar, Point2D } from 'cursor-lib';
 import * as THREE from 'three';
 // import SoundController, { SoundEvent } from './SoundController';
-import { autoSaveToLocalStorage } from './utils';
+import { autoSaveToLocalStorage, createGradientTexture } from './utils';
 import { Pane } from 'tweakpane';
 import RibbedGlass from './RibbedGlass';
+import {
+  Gradient,
+  GradientBladeApi,
+  GradientPluginBundle,
+  GradientBladeParams,
+} from 'tweakpane-plugin-gradient';
+
+const gradient = [
+  // minimum 2 points
+  { time: 0, value: { r: 0, g: 0, b: 0, a: 1 } },
+  { time: 0.65, value: { r: 139, g: 143, b: 171, a: 1.0 } },
+  { time: 1.0, value: { r: 255, g: 255, b: 255, a: 1.0 } },
+];
+
+const gradientParams = {
+  view: 'gradient',
+  initialPoints: gradient,
+  label: 'Gradient',
+  colorPicker: true,
+  colorPickerProps: {
+    alpha: true,
+    layout: 'popup',
+    expanded: false,
+  },
+  alphaPicker: false,
+  timePicker: false,
+  timeStep: 0.001,
+  timeDecimalPrecision: 4,
+} satisfies GradientBladeParams;
 
 const defaultSettings = {
   uApplyVerticalLines: true,
   uApplyHorizontalLines: false,
-  uRibsAmount: 20.0,
-  uRibsWobbelinessStrength: 3.0,
-  uRibsWobbelinessAmount: 5.0,
-  uRibsWobbelinessSpeed: 1.0,
-  uRibsWidthChange: 3.0,
+  uRibsAmountX: 20.0,
+  uRibsAmountY: 20.0,
+  uRibsWidthChangeX: 0.0,
+  uRibsWidthChangeY: 0.0,
+  uRibsWobbelinessStrength: 0.0,
+  uRibsWobbelinessAmount: 1.0,
+  uRibsWobbelinessSpeed: 0.0,
   uSpikinessAmount: 1.8,
   uDistortionAmount: 0.1,
   uJumpinessAmountX: 3.0,
+  uMarkerVisibility: 0.0,
+  uGradCompFrequency: new THREE.Vector3(2.0, 1.0, 0.4),
+  uGradCompMin: new THREE.Vector3(0.0, 0.0, 0.0),
+  uGradCompAmplitude: new THREE.Vector3(1.0, 1.0, 1.0),
+  uSpeed: 0.3,
+  uGradientTexture: gradient,
 };
 
 export type MatUniforms = typeof defaultSettings;
@@ -25,7 +62,7 @@ export type RemappedMatUniforms = {
 
 const parameters = autoSaveToLocalStorage('parameters', {
   ...defaultSettings,
-  //   ...JSON.parse(localStorage.getItem('parameters') ?? '{}'),
+  ...JSON.parse(localStorage.getItem('parameters') ?? '{}'),
 });
 
 export default class MainScene {
@@ -52,6 +89,7 @@ export default class MainScene {
     this.scene.background = new THREE.Color(0xff0000);
 
     //PANE
+    this.pane.registerPlugin(GradientPluginBundle);
     this.pane.addButton({ title: 'Reset settings' }).on('click', () => {
       localStorage.removeItem('parameters');
       window.location = window.location;
@@ -70,49 +108,79 @@ export default class MainScene {
       expanded: true,
     });
 
-    glassFolder
+    const tab = glassFolder.addTab({
+      pages: [{ title: 'Horizontal lines' }, { title: 'Vertical lines' }],
+    });
+
+    const horiz = tab.pages[0];
+
+    horiz
       .addBinding(parameters, 'uApplyHorizontalLines', {
-        label: 'Apply Horizontal Effect',
+        label: 'Apply',
       })
       .on(
         'change',
         (event) => (materialUniforms.uApplyHorizontalLines.value = event.value)
       );
-    glassFolder
+
+    horiz
+      .addBinding(parameters, 'uRibsAmountY', {
+        label: 'Amount',
+        step: 1,
+        min: 1,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uRibsAmountY.value = event.value)
+      );
+
+    horiz
+      .addBinding(parameters, 'uRibsWidthChangeY', {
+        label: 'Vary size',
+        step: 1,
+        min: 0,
+        // hidden: true,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uRibsWidthChangeY.value = event.value)
+      );
+
+    const vert = tab.pages[1];
+
+    vert
       .addBinding(parameters, 'uApplyVerticalLines', {
-        label: 'Apply Vertical Effect',
+        label: 'Apply',
       })
       .on(
         'change',
         (event) => (materialUniforms.uApplyVerticalLines.value = event.value)
       );
 
-    glassFolder
-      .addBinding(parameters, 'uRibsAmount', {
-        label: 'Ribs amount',
+    vert
+      .addBinding(parameters, 'uRibsAmountX', {
+        label: 'Amount',
         step: 1,
         min: 1,
-        max: 50,
       })
       .on(
         'change',
-        (event) => (materialUniforms.uRibsAmount.value = event.value)
+        (event) => (materialUniforms.uRibsAmountX.value = event.value)
       );
 
-    glassFolder
-      .addBinding(parameters, 'uRibsWidthChange', {
-        label: 'Ribs width change',
+    vert
+      .addBinding(parameters, 'uRibsWidthChangeX', {
+        label: 'Vary size',
         step: 1,
-        min: 1,
-        max: 50,
+        min: 0,
         // hidden: true,
       })
       .on(
         'change',
-        (event) => (materialUniforms.uRibsWidthChange.value = event.value)
+        (event) => (materialUniforms.uRibsWidthChangeX.value = event.value)
       );
 
-    const ribWobble = glassFolder.addFolder({
+    const ribWobble = vert.addFolder({
       title: 'Rib wobbeliness',
       expanded: false,
     });
@@ -151,13 +219,13 @@ export default class MainScene {
       );
 
     const ribDistortion = glassFolder.addFolder({
-      title: 'Rib distortion',
+      title: 'Distortion',
       expanded: false,
     });
 
     ribDistortion
       .addBinding(parameters, 'uDistortionAmount', {
-        label: 'Strength of the distortion',
+        label: 'Strength',
         min: 0.001,
         max: 0.5,
       })
@@ -168,7 +236,7 @@ export default class MainScene {
 
     ribDistortion
       .addBinding(parameters, 'uSpikinessAmount', {
-        label: 'Spikiness of the distortion',
+        label: 'Spikiness',
         min: 0.001,
         max: 2,
       })
@@ -179,7 +247,7 @@ export default class MainScene {
 
     ribDistortion
       .addBinding(parameters, 'uJumpinessAmountX', {
-        label: 'Jumpiness from one rib to another',
+        label: 'Jumpiness',
         min: 0,
         max: 10,
       })
@@ -188,6 +256,78 @@ export default class MainScene {
         (event) => (materialUniforms.uJumpinessAmountX.value = event.value)
       );
 
+    const gradientFolder = this.pane.addFolder({
+      title: 'Bg Gradient',
+      expanded: true,
+    });
+
+    gradientFolder
+      .addBinding(parameters, 'uMarkerVisibility', {
+        label: 'Show markers',
+        min: 0,
+        max: 1,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uMarkerVisibility.value = event.value)
+      );
+
+    gradientFolder
+      .addBinding(parameters, 'uSpeed', {
+        label: 'Animation speed',
+        min: 0,
+        max: 2.0,
+      })
+      .on('change', (event) => (materialUniforms.uSpeed.value = event.value));
+
+    const api = gradientFolder.addBlade(gradientParams) as GradientBladeApi;
+    api.on('change', (ev) => {
+      parameters.uGradientTexture = ev.value.points;
+      materialUniforms.uGradientTexture.value = createGradientTexture(
+        ev.value.points
+      );
+      this.mesh.material.needsUpdate = true;
+    });
+
+    const waveLevels = ['x', 'y', 'z'] as const;
+
+    const waveTab = gradientFolder.addTab({
+      pages: [{ title: 'Wave 1' }, { title: 'Wave 2' }, { title: 'Wave 3' }],
+    });
+
+    for (let i = 0; i < waveLevels.length; i++) {
+      const level = waveLevels[i];
+      const page = waveTab.pages[i];
+      page
+        .addBinding(parameters.uGradCompFrequency, level, {
+          label: `Frequency`,
+          min: 0.001,
+        })
+        .on(
+          'change',
+          (event) =>
+            (materialUniforms.uGradCompFrequency.value[level] = event.value)
+        );
+      page
+        .addBinding(parameters.uGradCompMin, level, {
+          label: `Min`,
+          min: 0.0,
+        })
+        .on(
+          'change',
+          (event) => (materialUniforms.uGradCompMin.value[level] = event.value)
+        );
+      page
+        .addBinding(parameters.uGradCompAmplitude, level, {
+          label: `Amplitude`,
+          min: 0.0,
+        })
+        .on(
+          'change',
+          (event) =>
+            (materialUniforms.uGradCompAmplitude.value[level] = event.value)
+        );
+    }
     // lineFolder
     //   .addBinding(parameters.lineCount, 'y', {
     //     label: 'lineCount.y',

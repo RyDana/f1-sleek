@@ -16,6 +16,7 @@
   "dependencies": {
     "ireg-lib": "^2.0.1",
     "three": "^0.150.0",
-    "tweakpane": "^4.0.5"
+    "tweakpane": "^4.0.5",
+    "tweakpane-plugin-gradient": "^0.1.5"
   }
 }
