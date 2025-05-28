@@ -49,6 +49,10 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
         uniform float uRibsWobbelinessAmount;
         uniform float uRibsWobbelinessSpeed;
 
+        uniform float uDisplacementAmp;
+        uniform float uDisplacementSpeed;
+        uniform float uDisplacementFreq;
+
         uniform vec3 uGradCompFrequency;
         uniform vec3 uGradCompMin;
         uniform vec3 uGradCompAmplitude;
@@ -110,7 +114,7 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
             sawtoothYDriver *= (1.0 + abs(uv.y * (uRibsWidthChangeY)));
             float distortionY = remap(tan(roundedSawtooth(sawtoothYDriver, 3.0) * spikiness) * centerTilt, -1.0, 1.0, -0.5, 0.5); 
 
-            uv.y += distortionX  * uApplyVerticalLines;
+            uv.y += distortionX  * uApplyVerticalLines + sin(floor(uv.x * uRibsAmountX)/uRibsAmountX * uDisplacementFreq + uTime*uDisplacementSpeed)*uDisplacementAmp;
             uv.x += (distortionX * uJumpinessAmountX)* uApplyVerticalLines;
             uv.x += distortionY * uApplyHorizontalLines;
 
@@ -149,10 +153,12 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
             }
             // oscillate color components by distance factor. smoothstep for contrast boost
             vec3 col = vec3(
-                abs(sin(time + dist * uGradCompFrequency.r)*uGradCompAmplitude.r + uGradCompMin.r) * uGradCompApply.r + (1.0 - uGradCompApply.r),
-                abs(cos(time + dist * uGradCompFrequency.g)*uGradCompAmplitude.g + uGradCompMin.g) * uGradCompApply.g + (1.0 - uGradCompApply.g),
-                abs(sin(time + dist * uGradCompFrequency.b)*uGradCompAmplitude.b + uGradCompMin.b) * uGradCompApply.b + (1.0 - uGradCompApply.b)
+                (abs(sin(time + dist * uGradCompFrequency.r)*uGradCompAmplitude.r)+ uGradCompMin.r) * uGradCompApply.r + (1.0 - uGradCompApply.r),
+                (abs(cos(time + dist * uGradCompFrequency.g)*uGradCompAmplitude.g)+ uGradCompMin.g) * uGradCompApply.g + (1.0 - uGradCompApply.g),
+                (abs(sin(time + dist * uGradCompFrequency.b)*uGradCompAmplitude.b)+ uGradCompMin.b) * uGradCompApply.b + (1.0 - uGradCompApply.b)
             );
+
+
 
             float col1 = col.r * col.g * col.b;
             col1 -= smoothstep(0., 0.7, max(0., length(uv) - uVignetteInner) * uVignetteDarkness);
@@ -184,6 +190,9 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
           value: parameters.uRibsWobbelinessAmount,
         },
         uRibsWobbelinessSpeed: { value: parameters.uRibsWobbelinessSpeed },
+        uDisplacementAmp: { value: parameters.uDisplacementAmp },
+        uDisplacementSpeed: { value: parameters.uDisplacementSpeed },
+        uDisplacementFreq: { value: parameters.uDisplacementFreq },
         uMarkerVisibility: { value: parameters.uMarkerVisibility },
         uGradCompFrequency: {
           value: parameters.uGradCompFrequency,

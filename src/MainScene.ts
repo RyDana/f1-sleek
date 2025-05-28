@@ -44,6 +44,9 @@ const defaultSettings = {
   uRibsWobbelinessStrength: 0.0,
   uRibsWobbelinessAmount: 1.0,
   uRibsWobbelinessSpeed: 0.0,
+  uDisplacementAmp: 0.0,
+  uDisplacementSpeed: 0.0,
+  uDisplacementFreq: 0.0,
   uSpikinessAmount: 1.8,
   uDistortionAmount: 0.1,
   uJumpinessAmountX: 3.0,
@@ -256,6 +259,43 @@ export default class MainScene {
       .on(
         'change',
         (event) => (materialUniforms.uRibsWobbelinessSpeed.value = event.value)
+      );
+
+    const ribDisplacement = vert.addFolder({
+      title: 'Rib displacement',
+      expanded: false,
+    });
+
+    ribDisplacement
+      .addBinding(parameters, 'uDisplacementAmp', {
+        label: 'Amplitude',
+        min: 0.0,
+        max: 1.0,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uDisplacementAmp.value = event.value)
+      );
+
+    ribDisplacement
+      .addBinding(parameters, 'uDisplacementSpeed', {
+        label: 'Speed',
+        min: 0.0,
+        max: 10.0,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uDisplacementSpeed.value = event.value)
+      );
+    ribDisplacement
+      .addBinding(parameters, 'uDisplacementFreq', {
+        label: 'Frequency',
+        min: 0.0,
+        max: 10.0,
+      })
+      .on(
+        'change',
+        (event) => (materialUniforms.uDisplacementFreq.value = event.value)
       );
 
     const ribDistortion = glassFolder.addFolder({
