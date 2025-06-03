@@ -149,7 +149,7 @@ export class ConcentricMaterial extends THREE.ShaderMaterial {
                 vec2 ctrlPoint = rads + vec2(ctrlX, ctrlY);
 
                 controlPointMarker += circle(uv, vec2(ctrlX, ctrlY), abs(rads), 0.01);
-                dist += distance(uv, ctrlPoint);
+                dist += (2. + sin(time * 0.01)) + distance(uv, ctrlPoint);
             }
             // oscillate color components by distance factor. smoothstep for contrast boost
             vec3 col = vec3(
