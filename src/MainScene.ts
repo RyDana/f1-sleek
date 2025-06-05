@@ -66,7 +66,7 @@ export type RemappedMatUniforms = {
   [K in keyof MatUniforms]: { value: MatUniforms[K] };
 };
 
-const parameters = autoSaveToLocalStorage('parameters', {
+const parameters = autoSaveToLocalStorage('parameters-sleek', {
   ...defaultSettings,
   ...JSON.parse(localStorage.getItem('parameters-sleek') ?? '{}'),
 });
