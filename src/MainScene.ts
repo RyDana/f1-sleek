@@ -68,7 +68,7 @@ export type RemappedMatUniforms = {
 
 const parameters = autoSaveToLocalStorage('parameters', {
   ...defaultSettings,
-  ...JSON.parse(localStorage.getItem('parameters') ?? '{}'),
+  ...JSON.parse(localStorage.getItem('parameters-sleek') ?? '{}'),
 });
 
 gradient = parameters.uGradientTexture;
